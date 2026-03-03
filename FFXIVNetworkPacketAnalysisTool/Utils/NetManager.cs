@@ -1,24 +1,14 @@
-using Dalamud;
-using Dalamud.Game.Network;
 using Dalamud.Hooking;
-using Dalamud.Interface;
-using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Network;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
-using FFXIVNetworkPacketAnalysisTool;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+using FFXIVClientStructs.FFXIV.Application.Network;
 
 namespace FFXIVNetworkPacketAnalysisTool.Utils
 {
-
     public unsafe class NetRe : IDisposable
     {
         private Configuration _configuration;
@@ -36,8 +26,10 @@ namespace FFXIVNetworkPacketAnalysisTool.Utils
         private ConcurrentDictionary<string, int> _packetLengthCache = new ConcurrentDictionary<string, int>();
 
         private static readonly CompSig SendPacketInternalSig =
-            new("e8 ?? ?? ?? ?? 84 ?? 74 ?? 48 ?? ?? c7 87 ?? ?? ?? ?? ?? ?? ?? ??");
-        private delegate void* SendPacketInternalDelegate(NetworkModuleProxy* module, byte* packet, int a3, int a4, ushort priority);
+            new("48 83 EC ?? 48 8B 89 ?? ?? ?? ?? 48 85 C9 74 ?? 44 89 44 24 ?? 4C 8D 44 24 ?? 44 89 4C 24 ?? 44 0F B6 4C 24");
+
+        private delegate bool SendPacketInternalDelegate(ZoneClient* zoneClient, IntPtr packet, uint a3, uint a4, bool a5);
+
         private static Hook<SendPacketInternalDelegate>? SendPacketInternalHook;
 
         private delegate void ReceivePacketInternalDelegate(PacketDispatcher* dispatcher, uint targetID, byte* packet);
@@ -106,10 +98,10 @@ namespace FFXIVNetworkPacketAnalysisTool.Utils
         public void SendPackt<T>(T data) where T : unmanaged, IGamePacket =>
             SendPacket(Framework.Instance()->NetworkModuleProxy, (byte*)&data, 0, 0x114514); // 打个标记
 
-        private void* SendPacketInternalDetour(NetworkModuleProxy* module, byte* packet, int a3, int a4, ushort priority)
+        private bool SendPacketInternalDetour(ZoneClient* zoneClient, IntPtr packet, uint a1, uint a2, bool b)
         {
             // 优先让原始数据通过，减少游戏延迟
-            var orginal = SendPacketInternalHook.Original(module, packet, a3, a4, priority);
+            var orginal = SendPacketInternalHook.Original(zoneClient, packet, a1, a2, b);
 
             // 在原始调用之后再进行捕获和日志（异步处理，不阻塞游戏）
             if (CaptureEnabled)
@@ -126,7 +118,7 @@ namespace FFXIVNetworkPacketAnalysisTool.Utils
                 // LogKnownGamePacket(opcode, packet, priority);
 
                 // 捕获包数据到队列
-                CapturePacket(opcode, packet, (int)length, priority, PacketDirection.Send);
+                CapturePacket(opcode, (byte*)packet, (int)length, (ushort)(b ? 1 : 0), PacketDirection.Send);
             }
 
             return orginal;
