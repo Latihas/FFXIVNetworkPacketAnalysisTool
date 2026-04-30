@@ -1,7 +1,7 @@
-﻿<Project Sdk="Dalamud.CN.NET.Sdk/15.0.0">
+﻿<Project Sdk="Dalamud.NET.Sdk/15.0.0">
     <PropertyGroup>
         <OutputPath>../bin</OutputPath>
-        <Version>0.0.0.4</Version>
+        <Version>0.0.0.5</Version>
         <Description>A sample plugin.</Description>
         <PackageProjectUrl>https://github.com/goatcorp/SamplePlugin</PackageProjectUrl>
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -9,5 +9,9 @@
         <Name>FFXIV Network Packet Analysis Tool</Name>
         <Punchline>FFXIV NPATool</Punchline>
         <Description>一个用于分析游戏内网络包详细内容的Debug工具，更推荐开发人员使用。</Description>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == ''">
+        <DalamudLibPath>$(appdata)/XIVLauncherCN/addon/Hooks/dev</DalamudLibPath>
+        <AssemblySearchPaths>$(AssemblySearchPaths);$(DalamudLibPath)</AssemblySearchPaths>
     </PropertyGroup>
 </Project>
